@@ -107,25 +107,28 @@ def generate_markdown(device_element):
                 ports = port_list.findall('Port')
                 
                 if ports:
-                    md_content.append("\n## Ports\n")
+                    # Filter ports to only include those with remote connections
+                    connected_ports = [port for port in ports if get_text(port, 'RemoteNameOfStation')]
                     
-                    for port in ports:
-                        port_data = parse_port(port)
+                    if connected_ports:
+                        md_content.append("\n## Ports\n")
                         
-                        # Only include ports with meaningful data
-                        port_global_index = port_data['PortGlobalIndex']
-                        port_id = port_data['PortID']
-                        
-                        md_content.append(f"\n### Port {port_global_index} ({port_id})\n")
-                        
-                        if port_data['PortDesc']:
-                            md_content.append(f"- **Description**: {port_data['PortDesc']}\n")
-                        
-                        md_content.append(f"- **Port ID**: {port_data['PortID']}\n")
-                        md_content.append(f"- **MAC**: {port_data['MAC']}\n")
-                        
-                        # Add remote connection information if available
-                        if port_data['RemoteNameOfStation']:
+                        for port in connected_ports:
+                            port_data = parse_port(port)
+                            
+                            # Only include ports with meaningful data
+                            port_global_index = port_data['PortGlobalIndex']
+                            port_id = port_data['PortID']
+                            
+                            md_content.append(f"\n### Port {port_global_index} ({port_id})\n")
+                            
+                            if port_data['PortDesc']:
+                                md_content.append(f"- **Description**: {port_data['PortDesc']}\n")
+                            
+                            md_content.append(f"- **Port ID**: {port_data['PortID']}\n")
+                            md_content.append(f"- **MAC**: {port_data['MAC']}\n")
+                            
+                            # Add remote connection information
                             md_content.append(f"- **Remote Port ID**: {port_data['RemotePortID']}\n")
                             # Format as Obsidian link
                             remote_station = port_data['RemoteNameOfStation']
@@ -133,8 +136,6 @@ def generate_markdown(device_element):
                             
                             if port_data['RemoteMAC']:
                                 md_content.append(f"- **Remote MAC**: {port_data['RemoteMAC']}\n")
-                        else:
-                            md_content.append("- **Status**: No remote connection\n")
     
     return ''.join(md_content)
 
