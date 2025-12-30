@@ -103,12 +103,13 @@ def parse_port(port_element):
     return port_data
 
 
-def generate_markdown(device_element):
+def generate_markdown(device_element, disable_links=False):
     """
     Generate Markdown content for a device.
     
     Args:
         device_element: XML Device element
+        disable_links: If True, render RemoteNameOfStation as plain text instead of [[links]]
         
     Returns:
         Markdown formatted string
@@ -174,10 +175,16 @@ def generate_markdown(device_element):
                             
                             # Add remote connection information
                             md_content.append(f"- **Remote Port ID**: {port_data['RemotePortID']}\n")
-                            # Format as Obsidian link with cleaned name
+                            # Format as Obsidian link with cleaned name (or plain text if links disabled)
                             remote_station_raw = port_data['RemoteNameOfStation']
                             remote_station = clean_station_name(remote_station_raw)
-                            md_content.append(f"- **Remote Station**: [[{remote_station}]]\n")
+                            
+                            if disable_links:
+                                # Render as plain text without link
+                                md_content.append(f"- **Remote Station**: {remote_station}\n")
+                            else:
+                                # Render as Obsidian link
+                                md_content.append(f"- **Remote Station**: [[{remote_station}]]\n")
                             
                             if port_data['RemoteMAC']:
                                 md_content.append(f"- **Remote MAC**: {port_data['RemoteMAC']}\n")
@@ -222,6 +229,28 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
     
     print(f"Found {len(devices)} devices")
     
+    # Build a map of devices that are referenced by unmanaged switches or SCALANCE
+    # These devices should NOT have their RemoteNameOfStation rendered as links
+    devices_referenced_by_switches = set()
+    
+    for device in devices:
+        device_type = get_text(device, 'DeviceType', '').lower()
+        
+        # Check if this device is an unmanaged switch or SCALANCE
+        if 'unmanaged switch' in device_type or 'scalance' in device_type:
+            # Find all ports and their remote connections
+            interfaces = device.find('Interfaces')
+            if interfaces is not None:
+                pn_interface = interfaces.find('PnInterface')
+                if pn_interface is not None:
+                    port_list = pn_interface.find('PortList')
+                    if port_list is not None:
+                        ports = port_list.findall('Port')
+                        for port in ports:
+                            remote_station = get_text(port, 'RemoteNameOfStation')
+                            if remote_station:
+                                devices_referenced_by_switches.add(remote_station)
+    
     # Process each device
     for device in devices:
         name_of_station_raw = get_text(device, 'NameOfStation', '')
@@ -233,9 +262,19 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
             name_of_station_raw = f"{device_type}_{ip_address}"
         
         name_of_station = clean_station_name(name_of_station_raw)
+        device_type = get_text(device, 'DeviceType', '').lower()
         
-        # Generate markdown content
-        markdown_content = generate_markdown(device)
+        # Check condition A: current device is NOT unmanaged switch or SCALANCE
+        is_not_switch = 'unmanaged switch' not in device_type and 'scalance' not in device_type
+        
+        # Check condition B: current device is referenced by a switch
+        is_referenced_by_switch = name_of_station_raw in devices_referenced_by_switches
+        
+        # Determine if links should be disabled for this device
+        disable_links = is_not_switch and is_referenced_by_switch
+        
+        # Generate markdown content with link control
+        markdown_content = generate_markdown(device, disable_links)
         
         # Create filename from cleaned NameOfStation
         filename = sanitize_filename(name_of_station) + '.md'
