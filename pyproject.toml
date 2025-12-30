@@ -1,0 +1,7 @@
+[project]
+name = "proneta2obsidian"
+version = "0.1.0"
+description = "Convert Proneta XML network topology files to Obsidian Markdown format"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
