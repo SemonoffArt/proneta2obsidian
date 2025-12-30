@@ -48,9 +48,9 @@ def sanitize_filename(filename):
 
 def clean_station_name(name):
     """
-    Clean station name by removing 'xd' patterns according to rules:
-    - If 'xd' is followed by digits, remove 'xd'
-    - If 'xd' exists (not followed by digits), remove last 4 characters
+    Clean station name by removing 'xd' and 'xb' patterns according to rules:
+    - If 'xd' is followed by digits, remove 'xd', then remove last 4 characters
+    - Remove all occurrences of 'xb'
     
     Args:
         name: Original station name
@@ -64,13 +64,19 @@ def clean_station_name(name):
     # Rule 1: Remove 'xd' when followed by digits
     # This handles cases like 'xd993' -> '993' or 'xd02' -> '02'
     cleaned = re.sub(r'xd(?=\d)', '', name)
-    
-    # Rule 2: If first rule was applied (string changed), remove last 4 characters
+
+    # Rule 2: Remove all occurrences of 'xb'
+    cleaned = cleaned.replace('xb', '_')
+
+    cleaned = cleaned.replace('xa', ' ')
+
+    # Rule 3: If first rule was applied (string changed), remove last 4 characters
     # Otherwise, if 'xd' still exists (not followed by digits), remove last 4 characters
     if cleaned != name:
         # First rule was applied, remove last 4 characters
         cleaned = cleaned[:-4]
     
+
     return cleaned
 
 
@@ -108,7 +114,14 @@ def generate_markdown(device_element):
         Markdown formatted string
     """
     # Extract basic device information
-    name_of_station_raw = get_text(device_element, 'NameOfStation', 'unknown')
+    name_of_station_raw = get_text(device_element, 'NameOfStation', '')
+    
+    # If NameOfStation is empty, use DeviceType + IpAddress
+    if not name_of_station_raw:
+        device_type = get_text(device_element, 'DeviceType', 'unknown')
+        ip_address = get_text(device_element, 'IpAddress', 'no-ip')
+        name_of_station_raw = f"{device_type}_{ip_address}"
+    
     name_of_station = clean_station_name(name_of_station_raw)
     ip_address = get_text(device_element, 'IpAddress')
     network_mask = get_text(device_element, 'NetworkMask')
@@ -121,6 +134,7 @@ def generate_markdown(device_element):
     md_content.append(f"# {name_of_station}\n")
     md_content.append("## Device Information\n")
     md_content.append(f"- **Name of Station**: {name_of_station}\n")
+    md_content.append(f"- **Name Original**: {name_of_station_raw}\n")
     md_content.append(f"- **IP Address**: {ip_address}\n")
     md_content.append(f"- **Network Mask**: {network_mask}\n")
     md_content.append(f"- **Device Type**: {device_type}\n")
@@ -210,7 +224,14 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
     
     # Process each device
     for device in devices:
-        name_of_station_raw = get_text(device, 'NameOfStation', 'unknown_device')
+        name_of_station_raw = get_text(device, 'NameOfStation', '')
+        
+        # If NameOfStation is empty, use DeviceType + IpAddress
+        if not name_of_station_raw:
+            device_type = get_text(device, 'DeviceType', 'unknown')
+            ip_address = get_text(device, 'IpAddress', 'no-ip')
+            name_of_station_raw = f"{device_type}_{ip_address}"
+        
         name_of_station = clean_station_name(name_of_station_raw)
         
         # Generate markdown content
