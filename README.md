@@ -1,7 +1,7 @@
 # 🔌 Proneta2Obsidian
 
-> Convert Proneta XML network topology files into beautiful Obsidian Markdown documentation
-
+> Convert Proneta XML network topology files into beautiful Obsidian Markdown documentation with automatic graph visualization
+![CONE APP](./resources/proneta2obsidian.png)
 [![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: clean](https://img.shields.io/badge/code%20style-clean-brightgreen.svg)](https://github.com/psf/black)
@@ -10,6 +10,7 @@
 
 - 📄 **Automatic Conversion**: Transform Proneta XML topology files into Obsidian-compatible Markdown
 - 🔗 **Smart Linking**: Automatic bi-directional links between connected devices
+- 🌐 **Network Graph Visualization**: Generated files create a beautiful interactive graph in Obsidian showing your entire network topology
 - 🏷️ **Name Normalization**: Clean and standardize device names automatically
 - 🔍 **Port Filtering**: Show only connected ports with meaningful data
 - 🎯 **Intelligent Link Control**: Context-aware link rendering based on device types
@@ -53,6 +54,23 @@ cd proneta2obsidian
    ```
 
 4. Import the `net` folder into your Obsidian vault!
+
+5. Open Obsidian Graph View to see your **network topology visualized as an interactive graph** 🎨
+
+## 🌐 Network Graph Visualization
+
+The generated Markdown files use Obsidian's `[[wiki-links]]` to create automatic connections between devices. When you open **Graph View** in Obsidian, you'll see:
+
+- 🔵 **Nodes**: Each device as a node
+- 🔗 **Edges**: Physical connections between devices
+- 🎨 **Visual Network Map**: Interactive topology you can explore
+- 🔍 **Zoom & Filter**: Focus on specific network segments
+
+**Graph View Benefits:**
+- Instantly visualize network architecture
+- Identify critical connection points
+- Discover network paths and redundancy
+- Track device relationships at a glance
 
 ## 📖 How It Works
 
@@ -199,17 +217,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🎯 Use Cases
 
+- **Network Graph Visualization**: Build beautiful, interactive network topology graphs in Obsidian
 - **Industrial Network Documentation**: Document complex PROFINET/Industrial Ethernet topologies
 - **Knowledge Management**: Integrate network diagrams into your Obsidian vault
 - **Network Analysis**: Visualize device connections and relationships
 - **Change Tracking**: Keep historical records of network configurations
+- **Topology Exploration**: Use Obsidian's graph view to explore network structure interactively
 
 ## 💡 Tips
 
-1. **Obsidian Graph View**: Use Obsidian's graph view to visualize your network topology
-2. **Tags**: Add custom tags in the generated Markdown for better organization
-3. **Dataview Queries**: Use Obsidian's Dataview plugin for advanced network queries
-4. **Version Control**: Keep your Markdown files in git for change tracking
+1. **Obsidian Graph View**: Open Graph View (Ctrl/Cmd + G) to see your **complete network topology** as an interactive graph
+2. **Graph Filters**: Use Obsidian's graph filters to focus on specific device types or network segments
+3. **Local Graph**: Right-click any device to see its immediate connections in Local Graph view
+4. **Tags**: Add custom tags in the generated Markdown for better organization and graph filtering
+5. **Dataview Queries**: Use Obsidian's Dataview plugin for advanced network queries
+6. **Version Control**: Keep your Markdown files in git for change tracking
+7. **Canvas View**: Create custom network diagrams using Obsidian Canvas with your device files
 
 ## 🐛 Known Limitations
 
