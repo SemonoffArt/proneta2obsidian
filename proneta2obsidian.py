@@ -67,8 +67,8 @@ def clean_station_name(name):
 
     # Rule 2: Remove all occurrences of 'xb'
     cleaned = cleaned.replace('xb', '_')
-
     cleaned = cleaned.replace('xa', ' ')
+    cleaned = cleaned.replace('xq', '-')
 
     # Rule 3: If first rule was applied (string changed), remove last 4 characters
     # Otherwise, if 'xd' still exists (not followed by digits), remove last 4 characters
