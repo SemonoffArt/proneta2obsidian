@@ -258,6 +258,19 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
     
     print(f"Found {len(devices)} devices")
     
+    # Initialize statistics counters
+    stats = {
+        'total_devices': len(devices),
+        'device_types': {},
+        'manufacturers': {},
+        'total_ports': 0,
+        'connected_ports': 0,
+        'devices_with_links': 0,
+        'devices_without_links': 0,
+        'files_created': 0,
+        'files_failed': 0
+    }
+    
     # Build a map of devices that are referenced by unmanaged switches or SCALANCE
     # These devices should NOT have their RemoteNameOfStation rendered as links
     devices_referenced_by_switches = set()
@@ -305,16 +318,47 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
             name_of_station_raw = f"{device_type}_{ip_address}"
         
         name_of_station = clean_station_name(name_of_station_raw)
-        device_type = get_text(device, 'DeviceType', '').lower()
+        device_type = get_text(device, 'DeviceType', 'Unknown')
+        manufacturer = get_text(device, 'ManufacturerName', 'Unknown')
+        device_type_lower = device_type.lower()
+        
+        # Update device type statistics
+        stats['device_types'][device_type] = stats['device_types'].get(device_type, 0) + 1
+        
+        # Update manufacturer statistics
+        stats['manufacturers'][manufacturer] = stats['manufacturers'].get(manufacturer, 0) + 1
+        
+        # Count ports
+        interfaces = device.find('Interfaces')
+        device_port_count = 0
+        device_connected_count = 0
+        
+        if interfaces is not None:
+            pn_interface = interfaces.find('PnInterface')
+            if pn_interface is not None:
+                port_list = pn_interface.find('PortList')
+                if port_list is not None:
+                    ports = port_list.findall('Port')
+                    device_port_count = len(ports)
+                    connected_ports = [port for port in ports if get_text(port, 'RemoteNameOfStation')]
+                    device_connected_count = len(connected_ports)
+        
+        stats['total_ports'] += device_port_count
+        stats['connected_ports'] += device_connected_count
         
         # Check condition A: current device is NOT unmanaged switch or SCALANCE
-        is_not_switch = 'unmanaged switch' not in device_type and 'scalance' not in device_type
+        is_not_switch = 'unmanaged switch' not in device_type_lower and 'scalance' not in device_type_lower
         
         # Check condition B: current device is referenced by a switch
         is_referenced_by_switch = name_of_station_raw in devices_referenced_by_switches
         
         # Determine if links should be disabled for this device
         disable_links = is_not_switch and is_referenced_by_switch
+        
+        if disable_links or device_connected_count == 0:
+            stats['devices_without_links'] += 1
+        else:
+            stats['devices_with_links'] += 1
         
         # Generate markdown content with link control
         # Pass scalance_dual_referenced to suppress links for SCALANCE devices
@@ -329,8 +373,48 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(markdown_content)
             print(f"Created: {output_file}")
+            stats['files_created'] += 1
         except Exception as e:
             print(f"Error writing file {output_file}: {e}")
+            stats['files_failed'] += 1
+    
+    # Print statistics
+    print("\n" + "="*60)
+    print("📊 NETWORK STATISTICS")
+    print("="*60)
+    
+    print(f"\n🔌 Total Devices: {stats['total_devices']}")
+    print(f"✅ Files Created: {stats['files_created']}")
+    if stats['files_failed'] > 0:
+        print(f"❌ Files Failed: {stats['files_failed']}")
+    
+    print(f"\n📡 Port Statistics:")
+    print(f"  • Total Ports: {stats['total_ports']}")
+    print(f"  • Connected Ports: {stats['connected_ports']}")
+    if stats['total_ports'] > 0:
+        connection_rate = (stats['connected_ports'] / stats['total_ports']) * 100
+        print(f"  • Connection Rate: {connection_rate:.1f}%")
+    
+    print(f"\n🔗 Link Statistics:")
+    print(f"  • Devices with Links: {stats['devices_with_links']}")
+    print(f"  • Devices without Links: {stats['devices_without_links']}")
+    
+    print(f"\n🏭 Device Types ({len(stats['device_types'])} types):")
+    sorted_types = sorted(stats['device_types'].items(), key=lambda x: x[1], reverse=True)
+    for device_type, count in sorted_types[:]:  # Show top 10
+        print(f"  • {device_type}: {count}")
+    # if len(sorted_types) > 10:
+    #     print(f"  ... and {len(sorted_types) - 10} more types")
+    
+    print(f"\n🏢 Manufacturers ({len(stats['manufacturers'])} total):")
+    sorted_manufacturers = sorted(stats['manufacturers'].items(), key=lambda x: x[1], reverse=True)
+    for manufacturer, count in sorted_manufacturers[:]:  # Show top 5
+        if manufacturer and manufacturer != 'Unknown':
+            print(f"  • {manufacturer}: {count}")
+    # if len(sorted_manufacturers) > 5:
+    #     print(f"  ... and {len(sorted_manufacturers) - 5} more manufacturers")
+    
+    print("\n" + "="*60)
 
 
 def main():
