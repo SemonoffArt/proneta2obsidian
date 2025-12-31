@@ -67,8 +67,8 @@ def clean_station_name(name):
 
     # Rule 2: Remove all occurrences of 'xb'
     cleaned = cleaned.replace('xb', '_')
+
     cleaned = cleaned.replace('xa', ' ')
-    cleaned = cleaned.replace('xq', '-')
 
     # Rule 3: If first rule was applied (string changed), remove last 4 characters
     # Otherwise, if 'xd' still exists (not followed by digits), remove last 4 characters
@@ -103,13 +103,15 @@ def parse_port(port_element):
     return port_data
 
 
-def generate_markdown(device_element, disable_links=False):
+def generate_markdown(device_element, disable_links=False, scalance_disable_links=None):
     """
     Generate Markdown content for a device.
     
     Args:
         device_element: XML Device element
         disable_links: If True, render RemoteNameOfStation as plain text instead of [[links]]
+        scalance_disable_links: Set of RemoteNameOfStation values that should not be rendered as links
+                                (used only for SCALANCE devices)
         
     Returns:
         Markdown formatted string
@@ -129,6 +131,9 @@ def generate_markdown(device_element, disable_links=False):
     device_type = get_text(device_element, 'DeviceType')
     mac = get_text(device_element, 'MAC')
     manufacturer_name = get_text(device_element, 'ManufacturerName')
+    
+    # Check if current device is SCALANCE
+    is_scalance = 'scalance' in device_type.lower() if device_type else False
     
     # Start building markdown content
     md_content = []
@@ -179,7 +184,14 @@ def generate_markdown(device_element, disable_links=False):
                             remote_station_raw = port_data['RemoteNameOfStation']
                             remote_station = clean_station_name(remote_station_raw)
                             
-                            if disable_links:
+                            # Determine if this specific remote connection should be a link
+                            should_disable_link = disable_links
+                            
+                            # For SCALANCE devices, check if this remote is in the disable list
+                            if is_scalance and scalance_disable_links and remote_station_raw in scalance_disable_links:
+                                should_disable_link = True
+                            
+                            if should_disable_link:
                                 # Render as plain text without link
                                 md_content.append(f"- **Remote Station**: {remote_station}\n")
                             else:
@@ -232,12 +244,17 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
     # Build a map of devices that are referenced by unmanaged switches or SCALANCE
     # These devices should NOT have their RemoteNameOfStation rendered as links
     devices_referenced_by_switches = set()
+    devices_referenced_by_unmanaged = set()
+    devices_referenced_by_scalance = set()
     
     for device in devices:
         device_type = get_text(device, 'DeviceType', '').lower()
         
         # Check if this device is an unmanaged switch or SCALANCE
-        if 'unmanaged switch' in device_type or 'scalance' in device_type:
+        is_unmanaged = 'unmanaged switch' in device_type
+        is_scalance = 'scalance' in device_type
+        
+        if is_unmanaged or is_scalance:
             # Find all ports and their remote connections
             interfaces = device.find('Interfaces')
             if interfaces is not None:
@@ -250,6 +267,15 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
                             remote_station = get_text(port, 'RemoteNameOfStation')
                             if remote_station:
                                 devices_referenced_by_switches.add(remote_station)
+                                
+                                if is_unmanaged:
+                                    devices_referenced_by_unmanaged.add(remote_station)
+                                if is_scalance:
+                                    devices_referenced_by_scalance.add(remote_station)
+    
+    # Find devices referenced by BOTH unmanaged switches AND SCALANCE
+    # For SCALANCE devices, these remotes should not be rendered as links
+    scalance_dual_referenced = devices_referenced_by_unmanaged & devices_referenced_by_scalance
     
     # Process each device
     for device in devices:
@@ -274,7 +300,8 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
         disable_links = is_not_switch and is_referenced_by_switch
         
         # Generate markdown content with link control
-        markdown_content = generate_markdown(device, disable_links)
+        # Pass scalance_dual_referenced to suppress links for SCALANCE devices
+        markdown_content = generate_markdown(device, disable_links, scalance_dual_referenced)
         
         # Create filename from cleaned NameOfStation
         filename = sanitize_filename(name_of_station) + '.md'
