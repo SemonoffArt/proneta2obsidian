@@ -99,6 +99,7 @@ def parse_port(port_element):
         'RemotePortID': get_text(port_element, 'RemotePortID'),
         'RemoteNameOfStation': get_text(port_element, 'RemoteNameOfStation'),
         'RemoteMAC': get_text(port_element, 'RemoteMAC'),
+        'MauType': get_text(port_element, 'MauType'),
     }
     return port_data
 
@@ -131,6 +132,8 @@ def generate_markdown(device_element, disable_links=False, scalance_disable_link
     device_type = get_text(device_element, 'DeviceType')
     mac = get_text(device_element, 'MAC')
     manufacturer_name = get_text(device_element, 'ManufacturerName')
+    location = get_text(device_element, 'Location')
+    descriptor = get_text(device_element, 'Descriptor')
     
     # Check if current device is SCALANCE
     is_scalance = 'scalance' in device_type.lower() if device_type else False
@@ -167,10 +170,10 @@ def generate_markdown(device_element, disable_links=False, scalance_disable_link
                             port_data = parse_port(port)
                             
                             # Only include ports with meaningful data
-                            port_global_index = port_data['PortGlobalIndex']
+                            port_if_index = port_data['PortIfIndex']
                             port_id = port_data['PortID']
                             
-                            md_content.append(f"\n### Port {port_global_index} ({port_id})\n")
+                            md_content.append(f"\n### Port {port_if_index} ({port_id})\n")
                             
                             if port_data['PortDesc']:
                                 md_content.append(f"- **Description**: {port_data['PortDesc']}\n")
@@ -215,6 +218,20 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Delete all existing .md files in the output directory
+    print(f"Cleaning output directory: {output_path}")
+    md_files = list(output_path.glob('*.md'))
+    if md_files:
+        for md_file in md_files:
+            try:
+                md_file.unlink()
+                print(f"Deleted: {md_file}")
+            except Exception as e:
+                print(f"Warning: Could not delete {md_file}: {e}")
+        print(f"Deleted {len(md_files)} existing .md files\n")
+    else:
+        print("No existing .md files to delete\n")
     
     # Parse XML file
     try:
