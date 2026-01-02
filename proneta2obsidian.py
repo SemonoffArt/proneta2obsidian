@@ -419,22 +419,33 @@ def parse_xml_and_generate_markdown(xml_file_path, output_dir='./net'):
 
 def main():
     """Main entry point of the script."""
-    # Default XML file path - can be changed to './sources/proneta.xml' for full version
-    xml_file = './resources/proneta.xml'
+    # Look for XML files in resources directory
+    resources_dir = Path('./resources')
     
-    # Check if full version exists
-    full_xml_file = './sources/proneta.xml'
-    if os.path.exists(full_xml_file):
-        xml_file = full_xml_file
-        print(f"Using full version: {xml_file}")
-    elif os.path.exists(xml_file):
-        print(f"Using test version: {xml_file}")
-    else:
-        print(f"Error: Neither '{full_xml_file}' nor '{xml_file}' found")
+    if not resources_dir.exists():
+        print(f"Error: Directory '{resources_dir}' not found")
         return
     
+    # Find all XML files in resources directory
+    xml_files = list(resources_dir.glob('*.xml'))
+    
+    if not xml_files:
+        print(f"Error: No XML files found in '{resources_dir}'")
+        return
+    
+    # If multiple XML files exist, select the newest one
+    if len(xml_files) > 1:
+        # Sort by modification time (newest first)
+        xml_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        xml_file = xml_files[0]
+        print(f"Found {len(xml_files)} XML files in {resources_dir}")
+        print(f"Using newest file: {xml_file.name} (modified: {xml_file.stat().st_mtime})")
+    else:
+        xml_file = xml_files[0]
+        print(f"Using XML file: {xml_file}")
+    
     # Parse XML and generate markdown files
-    parse_xml_and_generate_markdown(xml_file)
+    parse_xml_and_generate_markdown(str(xml_file))
     print("\nConversion complete!")
 
 
